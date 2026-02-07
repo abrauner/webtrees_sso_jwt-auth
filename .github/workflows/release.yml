@@ -28,12 +28,9 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Create and push tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git tag "$RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -46,6 +43,88 @@ jobs:
 
       - name: Set module version from tag
         run: sed -i "s/0.0.0-dev/${RELEASE_TAG#v}/" JwtAuthModule.php
+
+      - name: Extract changelog for this release
+        id: changelog
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          RELEASE_DATE=$(date +%Y-%m-%d)
+
+          # Check if this version already exists in CHANGELOG
+          if grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+            echo "::error::Version $VERSION already exists in CHANGELOG.md"
+            exit 1
+          fi
+
+          # Extract content from [Unreleased] section (stop at next ## heading that isn't [Unreleased])
+          UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md | sed '/^$/d')
+
+          if [ -z "$UNRELEASED_CONTENT" ]; then
+            echo "::error::No content found in [Unreleased] section"
+            exit 1
+          fi
+
+          # Save to file for GitHub release notes
+          echo "$UNRELEASED_CONTENT" > /tmp/release_notes.md
+
+          # Update CHANGELOG.md
+          # 1. Replace [Unreleased] content with placeholder
+          # 2. Add new release section after [Unreleased]
+          awk -v version="$VERSION" -v date="$RELEASE_DATE" '
+            /^## \[Unreleased\]/ {
+              print
+              print ""
+              print "### Added"
+              print "- TBD"
+              print ""
+              print "## [" version "] - " date
+              while ((getline line < "/tmp/release_notes.md") > 0) {
+                print line
+              }
+              close("/tmp/release_notes.md")
+              skip = 1
+              next
+            }
+            skip && /^## \[/ {
+              skip = 0
+              print
+              next
+            }
+            skip {
+              next
+            }
+            { print }
+          ' CHANGELOG.md > /tmp/changelog_tmp.md
+
+          # Find the most recent version link that is different from the current VERSION
+          PREV_VERSION=$(grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+(?=\]:)' CHANGELOG.md | grep -v "^$VERSION$" | head -1 || true)
+
+          if [ -n "$PREV_VERSION" ]; then
+            # Update [Unreleased] link to compare from new version
+            sed -i "s|\[Unreleased\]:.*|[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${VERSION}...HEAD|" /tmp/changelog_tmp.md
+            # Add new version link
+            sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${PREV_VERSION}...v${VERSION}" /tmp/changelog_tmp.md
+          else
+            # First release - just update [Unreleased] and add this version
+            sed -i "s|\[Unreleased\]:.*|[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${VERSION}...HEAD|" /tmp/changelog_tmp.md
+            sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/releases/tag/v${VERSION}" /tmp/changelog_tmp.md
+          fi
+
+          mv /tmp/changelog_tmp.md CHANGELOG.md
+
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for ${RELEASE_TAG}"
+          git push origin HEAD:main
+
+      - name: Create and push tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
       - name: Install dependencies
         run: composer install --no-dev --optimize-autoloader --no-interaction
@@ -65,32 +144,41 @@ jobs:
           tar -czf jwt-auth-${RELEASE_TAG}.tar.gz jwt-auth/
           mv jwt-auth-${RELEASE_TAG}.tar.gz $GITHUB_WORKSPACE/
 
+      - name: Generate release body
+        run: |
+          cat > /tmp/release_body.md << EOF
+          ## What's Changed
+
+          $(cat /tmp/release_notes.md)
+
+          ---
+
+          ## Installation
+
+          1. Download \`jwt-auth-${RELEASE_TAG}.tar.gz\`
+          2. Extract to your webtrees \`modules_v4/\` directory:
+             \`\`\`bash
+             cd /path/to/webtrees/modules_v4/
+             tar -xzf jwt-auth-${RELEASE_TAG}.tar.gz
+             \`\`\`
+          3. The module will be automatically discovered by Webtrees
+          4. Enable it in Control Panel → Modules → All modules
+          5. Configure it in the module settings
+
+          ## What's Included
+
+          - All module files
+          - Pre-installed dependencies (firebase/php-jwt)
+          - No need to run composer install
+
+          See [README.md](https://github.com/abrauner/webtrees-jwt-auth#readme) for full documentation.
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           files: jwt-auth-${{ env.RELEASE_TAG }}.tar.gz
-          body: |
-            ## JWT Authentication Module for Webtrees
-
-            ### Installation
-
-            1. Download `jwt-auth-${{ env.RELEASE_TAG }}.tar.gz`
-            2. Extract to your webtrees `modules_v4/` directory:
-               ```bash
-               cd /path/to/webtrees/modules_v4/
-               tar -xzf jwt-auth-${{ env.RELEASE_TAG }}.tar.gz
-               ```
-            3. The module will be automatically discovered by Webtrees
-            4. Enable it in Control Panel → Modules → All modules
-            5. Configure it in the module settings
-
-            ### What's Included
-
-            - All module files
-            - Pre-installed dependencies (firebase/php-jwt)
-            - No need to run composer install
-
-            See README.md for full documentation.
+          body_path: /tmp/release_body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

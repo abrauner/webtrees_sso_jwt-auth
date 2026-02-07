@@ -199,11 +199,30 @@ Key services used by this module:
 Tagging `v*` triggers `.github/workflows/release.yml` which:
 1. Validates version format (`v*.*.*`)
 2. Replaces `0.0.0-dev` in `JwtAuthModule.php` with the version number
-3. Installs production dependencies (`--no-dev`)
-4. Strips dev files (tests, docs, .git, build.sh, phpunit.xml, composer.json/lock)
-5. Creates `jwt-auth-vX.X.X.tar.gz` with vendor/ included
-6. Publishes a GitHub release
+3. Extracts content from `[Unreleased]` section in CHANGELOG.md
+4. Updates CHANGELOG.md:
+   - Creates new `[X.Y.Z]` section with release date
+   - Moves unreleased content into the new section
+   - Resets `[Unreleased]` section to placeholder
+   - Updates comparison links at bottom
+5. Commits and pushes CHANGELOG.md to main branch
+6. For `workflow_dispatch`: creates and pushes the tag (after changelog commit)
+7. Installs production dependencies (`--no-dev`)
+8. Strips dev files (tests, docs, .git, build.sh, phpunit.xml, composer.json/lock)
+9. Creates `jwt-auth-vX.X.X.tar.gz` with vendor/ included
+10. Publishes a GitHub release with extracted changelog content + installation instructions
 
 The workflow also supports `workflow_dispatch` for manual triggering with a version input.
 
-Manual build: `./build.sh v1.0.0`
+### Release Workflow
+
+**Before releasing:**
+- Add all changes to the `[Unreleased]` section in CHANGELOG.md following Keep a Changelog format
+
+**To release:**
+- Option 1: `git tag vX.Y.Z && git push origin vX.Y.Z`
+- Option 2: Actions → Create Release → Run workflow → Enter version
+
+The changelog content is automatically extracted and included in the GitHub release notes.
+
+Manual build: `./build.sh v1.0.0` (does not update CHANGELOG.md)
