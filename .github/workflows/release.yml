@@ -102,16 +102,12 @@ jobs:
           if [ -n "$PREV_VERSION" ]; then
             # Update [Unreleased] link to compare from new version
             sed -i "s|\[Unreleased\]:.*|[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${VERSION}...HEAD|" /tmp/changelog_tmp.md
-            # Add new version link if it does not already exist
-            if ! grep -q "^\[$VERSION\]:" /tmp/changelog_tmp.md; then
-              sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${PREV_VERSION}...v${VERSION}" /tmp/changelog_tmp.md
-            fi
+            # Add new version link
+            sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${PREV_VERSION}...v${VERSION}" /tmp/changelog_tmp.md
           else
             # First release - just update [Unreleased] and add this version
             sed -i "s|\[Unreleased\]:.*|[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${VERSION}...HEAD|" /tmp/changelog_tmp.md
-            if ! grep -q "^\[$VERSION\]:" /tmp/changelog_tmp.md; then
-              sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/releases/tag/v${VERSION}" /tmp/changelog_tmp.md
-            fi
+            sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/releases/tag/v${VERSION}" /tmp/changelog_tmp.md
           fi
 
           mv /tmp/changelog_tmp.md CHANGELOG.md
