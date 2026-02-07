@@ -1,0 +1,96 @@
+name: Question or Support
+description: Ask a question about using or configuring the JWT Auth module
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? Please fill out the form below.
+
+        **Note:** For security vulnerabilities, please do NOT open a public issue. Contact the maintainers privately.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Ask your question here
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question Category
+      description: What is your question about?
+      options:
+        - Installation and Setup
+        - Configuration
+        - JWT Token Format
+        - Algorithm Selection
+        - JWKS Integration
+        - Troubleshooting
+        - Security Best Practices
+        - Integration with Identity Provider
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What Have You Tried?
+      description: What steps have you already taken to solve this?
+      placeholder: |
+        - Checked the README
+        - Reviewed docs/CONFIGURATION.md
+        - Tested with different settings
+        - etc.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Module Version
+      description: What version of the JWT Auth module are you using?
+      placeholder: e.g., v1.0.0
+
+  - type: input
+    id: webtrees-version
+    attributes:
+      label: Webtrees Version
+      description: What version of Webtrees are you using?
+      placeholder: e.g., 2.1.20
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Current Configuration
+      description: Share your current configuration (remove sensitive values)
+      render: yaml
+      placeholder: |
+        Issuer: https://example.com
+        Audience: webtrees
+        Algorithm: RS256
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other information that might help answer your question
+      placeholder: Environment details, identity provider info, etc.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following
+      options:
+        - label: I have checked the documentation (README.md and docs/ folder)
+          required: true
+        - label: I have searched existing issues for similar questions
+          required: true
+        - label: This is not a security vulnerability (I would report those privately)
+          required: true

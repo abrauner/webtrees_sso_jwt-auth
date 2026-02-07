@@ -1,0 +1,96 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
+
+    steps:
+      - name: Validate version format
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must match format v*.*.*  (e.g. v1.0.0), got: $RELEASE_TAG"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create and push tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Set module version from tag
+        run: sed -i "s/0.0.0-dev/${RELEASE_TAG#v}/" JwtAuthModule.php
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Remove development files
+        run: |
+          rm -rf .git .github .gitignore
+          rm -f composer.json composer.lock
+          rm -f phpunit.xml build.sh
+          rm -rf tests docs .phpunit.cache
+
+      - name: Create release archive
+        run: |
+          mkdir -p /tmp/jwt-auth
+          cp -a . /tmp/jwt-auth/
+          cd /tmp
+          tar -czf jwt-auth-${RELEASE_TAG}.tar.gz jwt-auth/
+          mv jwt-auth-${RELEASE_TAG}.tar.gz $GITHUB_WORKSPACE/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: jwt-auth-${{ env.RELEASE_TAG }}.tar.gz
+          body: |
+            ## JWT Authentication Module for Webtrees
+
+            ### Installation
+
+            1. Download `jwt-auth-${{ env.RELEASE_TAG }}.tar.gz`
+            2. Extract to your webtrees `modules_v4/` directory:
+               ```bash
+               cd /path/to/webtrees/modules_v4/
+               tar -xzf jwt-auth-${{ env.RELEASE_TAG }}.tar.gz
+               ```
+            3. The module will be automatically discovered by Webtrees
+            4. Enable it in Control Panel → Modules → All modules
+            5. Configure it in the module settings
+
+            ### What's Included
+
+            - All module files
+            - Pre-installed dependencies (firebase/php-jwt)
+            - No need to run composer install
+
+            See README.md for full documentation.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

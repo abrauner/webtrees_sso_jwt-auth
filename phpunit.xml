@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<phpunit
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.1/phpunit.xsd"
+  bootstrap="tests/bootstrap.php"
+  colors="true"
+  cacheDirectory=".phpunit.cache"
+>
+  <testsuites>
+    <testsuite name="JWT Auth Module Tests">
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+  <source>
+    <include>
+      <directory suffix=".php">.</directory>
+    </include>
+    <exclude>
+      <directory>tests</directory>
+      <directory>vendor</directory>
+      <directory>docs</directory>
+    </exclude>
+  </source>
+</phpunit>

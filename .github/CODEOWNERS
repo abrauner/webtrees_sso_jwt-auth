@@ -1,0 +1,33 @@
+# CODEOWNERS - Defines individuals or teams responsible for code in this repository
+#
+# Each line is a file pattern followed by one or more owners.
+# Owners will be automatically requested for review when someone opens a pull request.
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @abrauner
+
+# Core module files
+/JwtAuthModule.php @abrauner
+/module.php @abrauner
+
+# HTTP handlers
+/Http/ @abrauner
+
+# Tests (require review for test changes)
+/tests/ @abrauner
+/phpunit.xml @abrauner
+
+# Configuration and documentation
+/docs/ @abrauner
+/README.md @abrauner
+/CONTRIBUTING.md @abrauner
+/SECURITY.md @abrauner
+
+# CI/CD and build
+/.github/ @abrauner
+/build.sh @abrauner
+
+# Dependencies
+/composer.json @abrauner

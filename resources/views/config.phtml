@@ -1,0 +1,169 @@
+<?php
+
+use Fisharebest\Webtrees\Http\RequestHandlers\ControlPanel;
+use Fisharebest\Webtrees\I18N;
+use Anschev\JwtAuth\Http\RequestHandlers\JwtConfigAction;
+
+?>
+
+<?= view('components/breadcrumbs', ['links' => [route(ControlPanel::class) => I18N::translate('Control panel'), $title]]) ?>
+
+<h1><?= $title ?></h1>
+
+<div class="alert alert-info">
+    <p>
+        <strong><?= I18N::translate('Configuration priority:') ?></strong>
+        <?= I18N::translate('Settings in %s take precedence over module preferences.', '<code>data/config.ini.php</code>') ?>
+    </p>
+    <p>
+        <?= I18N::translate('Add the following to %s for system-wide configuration:', '<code>data/config.ini.php</code>') ?>
+    </p>
+    <pre>jwt_auth_issuer="https://your-issuer.com"
+jwt_auth_audience="your-audience-value"
+jwt_auth_jwks_url="https://your-issuer.com/cdn-cgi/access/certs"
+jwt_auth_header_name="Cf-Access-Jwt-Assertion"
+jwt_auth_cookie_name="jwt_token"
+jwt_auth_source_priority="header,cookie"</pre>
+</div>
+
+<form method="post" action="<?= route(JwtConfigAction::class) ?>" class="form-horizontal">
+    <?= csrf_field() ?>
+
+    <h2><?= I18N::translate('JWT Validation Settings') ?></h2>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_issuer" class="col-sm-3 col-form-label">
+            <?= I18N::translate('JWT Issuer') ?>
+        </label>
+        <div class="col-sm-9">
+            <input type="text" class="form-control" id="jwt_auth_issuer" name="jwt_auth_issuer" value="<?= e($jwt_auth_issuer) ?>" placeholder="https://example.cloudflareaccess.com">
+            <small class="form-text text-muted">
+                <?= I18N::translate('Expected value of the %s claim in the JWT token.', '<code>iss</code>') ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_audience" class="col-sm-3 col-form-label">
+            <?= I18N::translate('JWT Audience') ?>
+        </label>
+        <div class="col-sm-9">
+            <input type="text" class="form-control" id="jwt_auth_audience" name="jwt_auth_audience" value="<?= e($jwt_auth_audience) ?>" placeholder="your-audience-hash">
+            <small class="form-text text-muted">
+                <?= I18N::translate('Expected value in the %s claim of the JWT token.', '<code>aud</code>') ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_jwks_url" class="col-sm-3 col-form-label">
+            <?= I18N::translate('JWKS URL') ?>
+        </label>
+        <div class="col-sm-9">
+            <input type="url" class="form-control" id="jwt_auth_jwks_url" name="jwt_auth_jwks_url" value="<?= e($jwt_auth_jwks_url) ?>" placeholder="https://your-issuer.com/.well-known/jwks.json">
+            <small class="form-text text-muted">
+                <?= I18N::translate('When set, signing keys are fetched from this URL instead of using the static public key below. Keys are cached for 1 hour and automatically refreshed on key rotation.') ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_algorithm" class="col-sm-3 col-form-label">
+            <?= I18N::translate('JWT Algorithm') ?>
+        </label>
+        <div class="col-sm-9">
+            <select class="form-control" id="jwt_auth_algorithm" name="jwt_auth_algorithm">
+                <option value="RS256" <?= $jwt_auth_algorithm === 'RS256' ? 'selected' : '' ?>>RS256 (RSA)</option>
+                <option value="HS256" <?= $jwt_auth_algorithm === 'HS256' ? 'selected' : '' ?>>HS256 (HMAC)</option>
+                <option value="ES256" <?= $jwt_auth_algorithm === 'ES256' ? 'selected' : '' ?>>ES256 (ECDSA)</option>
+            </select>
+            <small class="form-text text-muted">
+                <?= I18N::translate('Algorithm used to sign the JWT tokens.') ?>
+                <?= $jwt_auth_jwks_url !== '' ? '<strong>' . I18N::translate('Ignored when a JWKS URL is configured.') . '</strong>' : '' ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_public_key" class="col-sm-3 col-form-label">
+            <?= I18N::translate('Public Key / Secret') ?>
+        </label>
+        <div class="col-sm-9">
+            <textarea class="form-control" id="jwt_auth_public_key" name="jwt_auth_public_key" rows="8" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"><?= e($jwt_auth_public_key) ?></textarea>
+            <small class="form-text text-muted">
+                <?= I18N::translate('For RS256/ES256: paste the public key. For HS256: paste the shared secret.') ?>
+                <?= $jwt_auth_jwks_url !== '' ? '<strong>' . I18N::translate('Ignored when a JWKS URL is configured.') . '</strong>' : '' ?>
+            </small>
+        </div>
+    </div>
+
+    <h2><?= I18N::translate('Token Source Configuration') ?></h2>
+
+    <div class="alert alert-info" role="alert">
+        <ul class="mb-0">
+            <li><strong><?= I18N::translate('Highest Security:') ?></strong> <?= I18N::translate('HTTP Header only (e.g., %s for Cloudflare Access)', '<code>Cf-Access-Jwt-Assertion</code>') ?></li>
+            <li><strong><?= I18N::translate('Good Security:') ?></strong> <?= I18N::translate('Cookie with %s and %s flags set by your reverse proxy', '<code>HttpOnly</code>', '<code>Secure</code>') ?></li>
+        </ul>
+    </div>
+
+    <div class="row mb-3">
+        <label class="col-sm-3 col-form-label">
+            <?= I18N::translate('Token Sources (Priority Order)') ?>
+        </label>
+        <div class="col-sm-9">
+            <?php
+            $sources = explode(',', $jwt_auth_source_priority);
+            ?>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="source_header" name="source_header" value="1" <?= in_array('header', $sources) ? 'checked' : '' ?>>
+                <label class="form-check-label" for="source_header">
+                    <?= I18N::translate('HTTP Header') ?> <span class="badge bg-success"><?= I18N::translate('Recommended') ?></span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="source_cookie" name="source_cookie" value="1" <?= in_array('cookie', $sources) ? 'checked' : '' ?>>
+                <label class="form-check-label" for="source_cookie">
+                    <?= I18N::translate('Cookie') ?> <span class="badge bg-success"><?= I18N::translate('Recommended') ?></span>
+                </label>
+            </div>
+            <small class="form-text text-muted">
+                <?= I18N::translate('Select sources to check for JWT tokens. The module will check them in the order listed above.') ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_header_name" class="col-sm-3 col-form-label">
+            <?= I18N::translate('Header Name') ?>
+        </label>
+        <div class="col-sm-9">
+            <input type="text" class="form-control" id="jwt_auth_header_name" name="jwt_auth_header_name" value="<?= e($jwt_auth_header_name) ?>">
+            <small class="form-text text-muted">
+                <?= I18N::translate('HTTP header to check for JWT token. Use "Authorization" for Bearer tokens.') ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="jwt_auth_cookie_name" class="col-sm-3 col-form-label">
+            <?= I18N::translate('Cookie Name') ?>
+        </label>
+        <div class="col-sm-9">
+            <input type="text" class="form-control" id="jwt_auth_cookie_name" name="jwt_auth_cookie_name" value="<?= e($jwt_auth_cookie_name) ?>">
+            <small class="form-text text-muted">
+                <?= I18N::translate('Cookie name to check for JWT token.') ?>
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-sm-9 offset-sm-3">
+            <button type="submit" class="btn btn-primary">
+                <?= I18N::translate('save') ?>
+            </button>
+            <a href="<?= route(ControlPanel::class) ?>" class="btn btn-secondary">
+                <?= I18N::translate('cancel') ?>
+            </a>
+        </div>
+    </div>
+</form>

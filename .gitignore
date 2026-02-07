@@ -1,0 +1,11 @@
+# Development files (not included in releases)
+/vendor/
+composer.lock
+.DS_Store
+*.log
+*.tar.gz
+.phpunit.cache/
+.claude/settings.local.json
+
+# Note: vendor/ is excluded from git but INCLUDED in release archives
+# The GitHub Actions workflow installs dependencies before packaging

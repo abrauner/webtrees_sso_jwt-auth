@@ -1,0 +1,29 @@
+{
+    "name": "abrauner/webtrees-jwt-auth",
+    "description": "JWT authentication module for Webtrees",
+    "type": "library",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": "^8.3",
+        "firebase/php-jwt": "^6.10"
+    },
+    "require-dev": {
+        "fisharebest/webtrees": "^2.1",
+        "phpunit/phpunit": "^10.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Anschev\\JwtAuth\\": ""
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Anschev\\JwtAuth\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "preferred-install": {
+            "fisharebest/webtrees": "source"
+        }
+    }
+}
