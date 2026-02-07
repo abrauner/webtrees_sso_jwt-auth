@@ -29,6 +29,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Setup PHP
@@ -49,21 +50,27 @@ jobs:
           VERSION="${RELEASE_TAG#v}"
           RELEASE_DATE=$(date +%Y-%m-%d)
 
-          # Extract content from [Unreleased] section
-          UNRELEASED_CONTENT=$(sed -n '/^## \[Unreleased\]/,/^## \[/p' CHANGELOG.md | sed '1d;$d' | sed '/^$/d')
+          # Check if this version already exists in CHANGELOG
+          if grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+            echo "::error::Version $VERSION already exists in CHANGELOG.md"
+            exit 1
+          fi
+
+          # Extract content from [Unreleased] section (stop at next ## heading that isn't [Unreleased])
+          UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md | sed '/^$/d')
 
           if [ -z "$UNRELEASED_CONTENT" ]; then
             echo "::error::No content found in [Unreleased] section"
             exit 1
           fi
 
-          # Save to file for GitHub release (escape newlines for multiline output)
+          # Save to file for GitHub release notes
           echo "$UNRELEASED_CONTENT" > /tmp/release_notes.md
 
           # Update CHANGELOG.md
           # 1. Replace [Unreleased] content with placeholder
           # 2. Add new release section after [Unreleased]
-          awk -v version="$VERSION" -v date="$RELEASE_DATE" -v content="$UNRELEASED_CONTENT" '
+          awk -v version="$VERSION" -v date="$RELEASE_DATE" '
             /^## \[Unreleased\]/ {
               print
               print ""
@@ -71,30 +78,40 @@ jobs:
               print "- TBD"
               print ""
               print "## [" version "] - " date
-              print content
+              while ((getline line < "/tmp/release_notes.md") > 0) {
+                print line
+              }
+              close("/tmp/release_notes.md")
+              skip = 1
               next
             }
-            /^## \[Unreleased\]/, /^## \[/ {
-              if (/^## \[/ && !/^## \[Unreleased\]/) {
-                print
-              }
+            skip && /^## \[/ {
+              skip = 0
+              print
+              next
+            }
+            skip {
               next
             }
             { print }
           ' CHANGELOG.md > /tmp/changelog_tmp.md
 
-          # Update comparison links at the bottom
-          PREV_VERSION=$(grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+(?=\]:)' CHANGELOG.md | head -1)
+          # Find the most recent version link that is different from the current VERSION
+          PREV_VERSION=$(grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+(?=\]:)' CHANGELOG.md | grep -v "^$VERSION$" | head -1 || true)
 
           if [ -n "$PREV_VERSION" ]; then
             # Update [Unreleased] link to compare from new version
             sed -i "s|\[Unreleased\]:.*|[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${VERSION}...HEAD|" /tmp/changelog_tmp.md
-            # Add new version link
-            sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${PREV_VERSION}...v${VERSION}" /tmp/changelog_tmp.md
+            # Add new version link if it does not already exist
+            if ! grep -q "^\[$VERSION\]:" /tmp/changelog_tmp.md; then
+              sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${PREV_VERSION}...v${VERSION}" /tmp/changelog_tmp.md
+            fi
           else
             # First release - just update [Unreleased] and add this version
             sed -i "s|\[Unreleased\]:.*|[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v${VERSION}...HEAD|" /tmp/changelog_tmp.md
-            sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/releases/tag/v${VERSION}" /tmp/changelog_tmp.md
+            if ! grep -q "^\[$VERSION\]:" /tmp/changelog_tmp.md; then
+              sed -i "/\[Unreleased\]:/a [$VERSION]: https://github.com/abrauner/webtrees-jwt-auth/releases/tag/v${VERSION}" /tmp/changelog_tmp.md
+            fi
           fi
 
           mv /tmp/changelog_tmp.md CHANGELOG.md
