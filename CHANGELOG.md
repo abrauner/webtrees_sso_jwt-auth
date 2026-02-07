@@ -8,12 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- TBD
+
+## [0.0.1] - 2026-02-07
+### Added
 - Initial open-source release preparation
 - Community health files (CONTRIBUTING.md, CODE_OF_CONDUCT.md, CODEOWNERS)
 - Issue templates for bugs, feature requests, and questions
 - Pull request template
 - Comprehensive documentation structure
-
 ## [1.0.0] - TBD
 
 ### Added
@@ -84,5 +87,6 @@ Use this template for new releases:
 - Security-related changes
 ```
 
-[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/abrauner/webtrees-jwt-auth/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/abrauner/webtrees-jwt-auth/compare/v1.0.0...v0.0.1
 [1.0.0]: https://github.com/abrauner/webtrees-jwt-auth/releases/tag/v1.0.0
