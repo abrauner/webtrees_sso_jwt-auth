@@ -30,6 +30,9 @@ rsync -av --exclude="${BUILD_DIR}" \
 # Install production dependencies
 echo "Installing production dependencies..."
 cd "${BUILD_DIR}/${RELEASE_NAME}"
+# Resolve only the shipped dependencies (see .github/workflows/release.yml)
+jq 'del(."require-dev") | del(.config.policy)' composer.json > composer.release.json
+mv composer.release.json composer.json
 composer install --no-dev --optimize-autoloader --no-interaction
 cd ../..
 

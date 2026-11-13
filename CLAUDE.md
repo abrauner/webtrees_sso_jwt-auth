@@ -8,7 +8,7 @@
 - **Composer package:** `abrauner/webtrees-jwt-auth`
 - **License:** GPL-3.0-or-later
 - **PHP:** ^8.3
-- **Dependency:** `firebase/php-jwt` ^6.10
+- **Dependency:** `firebase/php-jwt` ^7.0 (rejects HS256 secrets under 32 bytes and RSA keys under 2048 bits)
 
 ## Development Setup
 

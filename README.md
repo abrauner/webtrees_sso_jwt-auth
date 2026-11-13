@@ -40,7 +40,7 @@ Required settings:
 |---|---|
 | JWT Issuer | Expected `iss` claim value |
 | JWT Audience | Expected `aud` claim value |
-| Public Key / Secret | Public key (RS256/ES256) or shared secret (HS256) |
+| Public Key / Secret | Public key (RS256/ES256) or shared secret (HS256). RSA keys need at least 2048 bits, HS256 secrets at least 32 bytes; shorter ones are rejected |
 | Algorithm | `RS256`, `HS256`, or `ES256` |
 
 Optional settings:
