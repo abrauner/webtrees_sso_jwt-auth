@@ -22,6 +22,7 @@ use Fisharebest\Webtrees\User;
 use Fisharebest\Webtrees\Validator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -297,6 +298,84 @@ class JwtAuthModuleTest extends TestCase
         $this->module->process($request, $handler);
 
         self::assertSame($user->id(), Auth::id());
+    }
+
+    // -------------------------------------------------------------------------
+    // Skip on hostnames without Cloudflare Access (server param JWT_AUTH_SKIP)
+    // -------------------------------------------------------------------------
+
+    /**
+     * @param array<string,string> $serverParams
+     */
+    private function buildRequestWithServerParams(array $serverParams): ServerRequestInterface
+    {
+        $factory = Registry::container()->get(ServerRequestFactoryInterface::class);
+
+        return $factory->createServerRequest(RequestMethodInterface::METHOD_GET, 'https://stammbaum.local.retis.tech/', $serverParams);
+    }
+
+    private function authLogCount(): int
+    {
+        return DB::table('log')->where('log_type', '=', 'auth')->count();
+    }
+
+    public function testSkipParamBypassesValidToken(): void
+    {
+        $this->configureModuleForHs256();
+        $this->createVerifiedUser();
+        Registry::container()->set(UserService::class, new UserService());
+
+        $token = $this->createHs256Token($this->standardPayload());
+        $request = $this->buildRequestWithServerParams(['JWT_AUTH_SKIP' => '1'])
+            ->withHeader('Authorization', 'Bearer ' . $token);
+
+        $response = $this->module->process($request, $this->createStubHandler());
+
+        self::assertNull(Auth::id());
+        self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
+    }
+
+    public function testSkipParamZeroDoesNotBypass(): void
+    {
+        $this->configureModuleForHs256();
+        $user = $this->createVerifiedUser();
+        Registry::container()->set(UserService::class, new UserService());
+
+        $token = $this->createHs256Token($this->standardPayload());
+        $request = $this->buildRequestWithServerParams(['JWT_AUTH_SKIP' => '0'])
+            ->withHeader('Authorization', 'Bearer ' . $token);
+
+        $this->module->process($request, $this->createStubHandler());
+
+        self::assertSame($user->id(), Auth::id());
+    }
+
+    public function testSkipHeaderDoesNotBypass(): void
+    {
+        // A client header "JWT-Auth-Skip: 1" reaches PHP as HTTP_JWT_AUTH_SKIP
+        $this->configureModuleForHs256();
+        $user = $this->createVerifiedUser();
+        Registry::container()->set(UserService::class, new UserService());
+
+        $token = $this->createHs256Token($this->standardPayload());
+        $request = $this->buildRequestWithServerParams(['HTTP_JWT_AUTH_SKIP' => '1'])
+            ->withHeader('JWT-Auth-Skip', '1')
+            ->withHeader('Authorization', 'Bearer ' . $token);
+
+        $this->module->process($request, $this->createStubHandler());
+
+        self::assertSame($user->id(), Auth::id());
+    }
+
+    public function testSkipParamWritesNoAuthLog(): void
+    {
+        $this->configureModuleForHs256();
+        $before = $this->authLogCount();
+
+        $request = $this->buildRequestWithServerParams(['JWT_AUTH_SKIP' => '1']);
+        $this->module->process($request, $this->createStubHandler());
+
+        self::assertSame($before, $this->authLogCount());
     }
 
     public function testNoTokenPassesThrough(): void

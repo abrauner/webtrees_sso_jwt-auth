@@ -99,6 +99,22 @@ The user account must:
    - **Header Name:** `Cf-Access-Jwt-Assertion` (Cloudflare sets this header automatically)
 4. Ensure webtrees users exist with email addresses matching their Cloudflare identity
 
+## Skipping on a local hostname
+
+If the same webtrees is also served under a second hostname without Cloudflare Access (for example only on the home network), no request there carries a token. The middleware would still count every guest request against its site-wide rate limit (20 per 60 seconds, shared with the public hostname) and write "JWT: no token found in request" to the authentication log.
+
+Let the web server tell the module to stay out of the way on that hostname. In its nginx server block:
+
+```nginx
+location ~ \.php$ {
+    include fastcgi.conf;
+    fastcgi_param JWT_AUTH_SKIP "1";
+    # ...
+}
+```
+
+With the server param `JWT_AUTH_SKIP` set to anything but empty or `0`, the module passes every request through untouched: no rate limit, no log entry, no login. Users log in with their webtrees password there. Only the web server can set it: a client header `JWT-Auth-Skip` reaches PHP as `HTTP_JWT_AUTH_SKIP` and is ignored.
+
 ## Troubleshooting
 
 All authentication events are logged in **Control Panel > Website logs > Authentication log**.
