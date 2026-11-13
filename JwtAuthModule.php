@@ -141,6 +141,13 @@ class JwtAuthModule extends AbstractModule implements ModuleCustomInterface, Mod
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        // Skip entirely on hostnames without Cloudflare Access: the web server sets this
+        // server param (e.g. nginx fastcgi_param); request headers arrive as HTTP_* and cannot
+        $skip = (string) ($request->getServerParams()['JWT_AUTH_SKIP'] ?? '');
+        if ($skip !== '' && $skip !== '0') {
+            return $handler->handle($request);
+        }
+
         // Skip if user is already logged in
         if (Auth::id() !== null) {
             return $handler->handle($request);
